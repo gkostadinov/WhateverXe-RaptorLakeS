@@ -196,6 +196,8 @@ it also skips GPU resource probing while preserving the
 framebuffer's independent boot-memory and MMIO checks. It does not enable an
 otherwise unsupported display backend.
 
+On physical Raptor Lake-S A780 revision04 with Tahoe, WEX corrects native GGTT entries for system memory while preserving physical addresses, present handling and PPGTT entries. This correction does not require diagnostic capture options. The optional `-wex-rpls-ggtt-compat-off` restores the original GGTT flag handling for diagnosis. Other hardware and OS profiles retain their existing behavior.
+
 Temporary development diagnostic: `-wex-adlp-readout` captures ADL-P boot resources while keeping GPU driver admission disabled. It is not required for supported hardware.
 `-wex-adlp-load-only` blocks both native framebuffer and accelerator probes/starts on a selected ADL-P/RPL-P device, for load-only diagnostics without GPU initialization.
 `-wex-display13-offline` keeps native display controller initialization enabled on Alder Lake-N / Twin Lake and Alder Lake-H/P/U / Raptor Lake-H/P/U but reports selected outputs as disconnected, isolating HPD/EDID and mode programming for framebuffer diagnostics. It does not establish display operation.

@@ -8,6 +8,7 @@
 //
 
 #include "kern_xe.hpp"
+#include "kern_rpls_memory.hpp"
 #include "kern_framebuffer_donor.hpp"
 #include "kern_xelp_os.hpp"
 #include "kern_alderlake_n.hpp"
@@ -3785,6 +3786,10 @@ extern "C" __attribute__((naked, used)) void tglGuCDMAWriteBridge() {
 		"jmpq *_tglGuCDMAWriteResume(%rip)\n");
 }
 
+// RPLS_MEMORY_IMPLEMENTATION_BEGIN
+#include "kern_rpls_memory.inc.hpp"
+// RPLS_MEMORY_IMPLEMENTATION_END
+
 void XE::init() {
     callbackXE = this;
     // Register notifications before Lilu closes registration. Actual family
@@ -3796,6 +3801,14 @@ void XE::init() {
 
 void XE::selectProfile(const XELP::Profile &profile) {
     xeProfile=profile;
+    // RPLS_MEMORY_PROFILE_BEGIN
+    rplsMemoryAdmitted=RPLSMemory::admitted(profile.identity,profile.revision,
+        profile.admitted() && !profile.overridden() &&
+        XELP::displayAdapter(profile.family)==XELP::DisplayAdapter::ADLS &&
+        XELP::kernelOS(version)==XELP::OS::Tahoe);
+    rplsMemoryRequested=rplsMemoryAdmitted && !checkKernelArgument("-wex-rpls-ggtt-compat-off") &&
+        !checkKernelArgument("-wex-noaccel") && !checkKernelArgument("-wex-tgl-off");
+    // RPLS_MEMORY_PROFILE_END
     display12SmallGTDetected=profile.admitted() && XELP::display12SmallGT(profile.gt);
     adlsDisplaySelected=profile.admitted() && XELP::displayAdapter(profile.family)==XELP::DisplayAdapter::ADLS;
     adlnNativeRCSProfileRequested=false;
@@ -11408,7 +11421,11 @@ bool XE::processTGLAccelerator(KernelPatcher &patcher, size_t index, mach_vm_add
 			}
 			IORegistryEntry::getRegistryRoot()->setProperty("TGLRecoverySinglePassRequested",recoveryRequested);
 			IORegistryEntry::getRegistryRoot()->setProperty("TGLRecoverySinglePassReady",recoveryRequested && recoveryOK);
-			tglAcceleratorReady = surfaceABIReady && adlnObserved && skuReady && urbReady && ccsReady && hizReady && ccsPSReady && ggttOK && observed && ok && gucOK && dmaWriteOK && hostOK && scratchOK && blitInitOK && tglMMIOUCReady && copyOK && auxAlignOK && iosCCSOK && ffModeOK && cpsOK && flushOK && tlbPreparserOK && semaphoreTLBOK && hangOK && recoveryOK && completionCacheOK && contextCacheOK;
+			// RPLS_MEMORY_INSTALL_BEGIN
+			rplsMemoryInstall(patcher,index,address,size,currentGraphics);
+			// RPLS_MEMORY_INSTALL_END
+			tglAcceleratorReady = surfaceABIReady && adlnObserved && skuReady && urbReady && ccsReady && hizReady && ccsPSReady && ggttOK && observed && ok && gucOK && dmaWriteOK && hostOK && scratchOK && blitInitOK && tglMMIOUCReady && copyOK && auxAlignOK && iosCCSOK && ffModeOK && cpsOK && flushOK && tlbPreparserOK && semaphoreTLBOK && hangOK && recoveryOK && completionCacheOK && contextCacheOK &&
+                (!rplsMemoryRequested || RPLSMemory::ready(rplsMemoryReceipt));
 			// r201: resource/copy diagnostics are absent, not admission requirements.
 			IORegistryEntry::getRegistryRoot()->setProperty("TGLResourceDiagnosticsRemoved",true);
 			IORegistryEntry::getRegistryRoot()->setProperty("TGLAcceleratorAdmissionReady", tglAcceleratorReady);

@@ -145,6 +145,8 @@ FBの立上げ時は、任意の`-wex-noaccel`引数でAcceleratorの起動を�
 Alder Lake-N / Twin LakeとAlder Lake-H/P/U / Raptor Lake-H/P/UではGPU資源のprobeも省略し、FB独自の起動メモリ・MMIOの確認は維持します。
 未対応のDisplayバックエンドを有効にする引数ではありません。
 
+Tahoe上の物理Raptor Lake-S A780 revision04では、WEXはシステムメモリ用のnative GGTTエントリを補正し、物理アドレス、present処理、PPGTTエントリは保持します。この補正に診断キャプチャオプションは不要です。任意の `-wex-rpls-ggtt-compat-off` で診断用に元のGGTTフラグ処理へ戻せます。他のハードウェアとOSプロファイルは既存の動作を維持します。
+
 開発時の一時診断用に `-wex-adlp-readout` を指定すると、GPUドライバの受付を閉じたままADL-Pの起動資源を採取します。対応済みハードウェアでは不要です。
 `-wex-adlp-load-only` は選択済みADL-P/RPL-Pで、FramebufferとAccelerator両方のnative probe/startを止め、GPUを初期化せずにロード段階を診断します。
 `-wex-display13-offline` はAlder Lake-N / Twin LakeとAlder Lake-H/P/U / Raptor Lake-H/P/Uのnative display controller初期化を有効に保ち、選択した出力を未接続として扱います。FB診断でHPD/EDIDとmode設定を切り離すための設定で、表示成立を意味しません。
