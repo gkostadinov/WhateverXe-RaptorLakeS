@@ -83,6 +83,7 @@ BIOS/UEFIで設定できる場合は、**DVMT Pre-Allocatedを96MB**にします
 - 内蔵画面の輝度調整には`SSDT-PNLF`を追加します。
 - GPUは自動選択するため、通常は`device-id`上書きは不要です。
 - Alder Lake-N / Twin LakeとAlder Lake-H/P/U / Raptor Lake-H/Pではタイル形式を自動選択します。`-yTileDisable`は使わないでください。`AAPL,GfxYTile`は不要です。
+- Tahoe上の物理Raptor Lake-S A780 revision 04では、システムメモリ用のnative GGTTエントリを補正します。診断用に`-wex-rpls-ggtt-compat-off`で元の処理へ戻せます。
 
 ## 動作確認済みの機能と既知の問題
 

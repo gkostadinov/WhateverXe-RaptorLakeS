@@ -83,6 +83,7 @@ These settings are unnecessary at 96MB and do not increase firmware-allocated me
 - Add `SSDT-PNLF` for internal-display brightness control.
 - GPU selection is automatic; a `device-id` override is normally unnecessary.
 - Alder Lake-N / Twin Lake and Alder Lake-H/P/U / Raptor Lake-H/P select tiling automatically. Do not use `-yTileDisable`; `AAPL,GfxYTile` is unnecessary.
+- On physical Raptor Lake-S A780 revision 04 with Tahoe, WEX corrects native GGTT entries for system memory. `-wex-rpls-ggtt-compat-off` restores the original handling for diagnosis.
 
 ## Tested features and known issues
 
