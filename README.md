@@ -84,6 +84,7 @@ These settings are unnecessary at 96MB and do not increase firmware-allocated me
 - GPU selection is automatic; a `device-id` override is normally unnecessary.
 - Alder Lake-N / Twin Lake and Alder Lake-H/P/U / Raptor Lake-H/P select tiling automatically. Do not use `-yTileDisable`; `AAPL,GfxYTile` is unnecessary.
 - On physical Raptor Lake-S A780 revision 04 with Tahoe, WEX corrects native GGTT entries for system memory. `-wex-rpls-ggtt-compat-off` restores the original handling for diagnosis.
+- On Raptor Lake-S without an Intel GOP (for example with GPU passthrough), WEX maps the stolen-memory GGTT range, seeds the first external display path on the lowest VBT-wired HDMI port, keeps fixed HDMI combo routes in combo mode on hotplug, skips the DisplayPort-only native HDCP on those routes, applies the VBT-selected HDMI voltage-swing entry, and skips the slow native GPU-hang register dump. Tested with HDMI at 3840x2160@30 and 1920x1080@120. `-wex-boot-ddi3` or `-wex-boot-ddi4` selects the seeded HDMI port; `-wex-noboot-seed`, `-wex-nostolen-ggtt`, `-wex-hdmi-hdcp`, `-wex-native-hdmi-swing` and `-wex-rpls-hang-dump` restore the native behavior for diagnosis.
 
 ## Tested features and known issues
 

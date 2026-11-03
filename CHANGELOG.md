@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Bring up external HDMI on Raptor Lake-S on macOS Tahoe without an Intel GOP: map the stolen-memory GGTT range, seed the first display path on the VBT-wired HDMI port, and add the `-wex-boot-ddi3` / `-wex-boot-ddi4` port selection.
+- Add read-only GMBus/DDC request counters and live display register and scanout descriptions for display diagnostics.
+- Add read-only Raptor Lake-S render-engine runtime and outgoing-context lifetime observations for submission and completion diagnostics.
+
+### Fixed
+
+- Build new Raptor Lake-S render contexts through the native plain-context path on macOS Tahoe so render commands execute and complete.
+- Make qualified Alder Lake-S / Raptor Lake-S framebuffers eligible for the native graphics-policy driver, and drop the donor's placeholder internal panel from external-only firmware topologies.
+- Keep fixed Raptor Lake-S HDMI combo routes in combo mode on hotplug instead of the Type-C mode that drove them as DisplayPort.
+- Skip the DisplayPort-only native HDCP on fixed HDMI routes, which dropped the link repeatedly.
+- Program the VBT-selected HDMI voltage-swing entry on Raptor Lake-S combo PHYs.
+- Skip the native GPU-hang register dump, which could hold WindowServer for minutes during resolution changes.
+
 ## 0.7.0
 
 Use the latest [WhateverXe Graphics](https://github.com/b00t0x/WhateverXe-Graphics/releases) package with this update.
