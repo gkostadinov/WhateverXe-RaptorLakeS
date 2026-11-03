@@ -10,6 +10,7 @@ code=r'''
 #include "kern_xelp_os.hpp"
 #include "kern_rpls_memory.hpp"
 static bool rplsMemoryAdmitted,rplsMemoryRequested;
+static bool rplsCPSExecutionWitness,rplsPlainContextProfile;
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -40,6 +41,7 @@ int main(){
   const auto pci=(isMobile?mobile[which/2]:isN?0x46d1:0x9a49)<<16|0x8086;
   const auto effective=isMobile && (which&1)?0x9a498086:pci;
   const auto p=XELP::identify(pci,rev,effective);x.selectProfile(p);
+  assert(!rplsCPSExecutionWitness && !rplsPlainContextProfile);
   assert(XELP::same(x.xeProfile,p) && p.admitted());
   assert(x.currentFramebuffer==&kextIntelTGLFb && x.currentGraphics==&kextIntelTGL);
   assert(x.display13FramebufferRequested==(isMobile || isN));
@@ -58,6 +60,7 @@ int main(){
   version=os;extra.clear();noaccel=mode==2;if(mode==1)extra.insert("-wex-rpls-ggtt-compat-off");if(mode==3)extra.insert("-wex-tgl-off");
   XE target;target.selectProfile(XELP::identify(0xA7808086,rev));const bool yes=rev==4 && XELP::kernelOS(version)==XELP::OS::Tahoe;
   assert(rplsMemoryAdmitted==yes && rplsMemoryRequested==(yes&&mode==0));++rplCases;
+  assert(rplsCPSExecutionWitness==yes && rplsPlainContextProfile==yes);
  }
  version="Darwin Kernel Version 25.6.0: test/RELEASE_X86_64";extra.clear();noaccel=false;
  for(auto id:{0x46808086U,0xA7888086U,0x9A498086U}){XE target;target.selectProfile(XELP::identify(id,4));assert(!rplsMemoryAdmitted&&!rplsMemoryRequested);}
