@@ -1,10 +1,33 @@
 #!/usr/bin/env python3
 """Replay common-before-backend installation and the mandatory start boundary."""
 from pathlib import Path
-import re,subprocess,tempfile,sys
+import re,subprocess,tempfile,sys,plistlib
 r=Path(__file__).resolve().parents[1];s=(r/'WhateverXe/kern_xe.cpp').read_text()
 names=['processFramebufferKext','processFramebufferCommon','wrapFramebufferStart']
 f='\n'.join(re.search(r'bool XE::'+n+r'\(.*?\n\}',s,re.S).group() for n in names)
+policies=plistlib.loads((r/'AppleIntelTGLCompat/GraphicsPolicy.plist').read_bytes())
+policy=policies['WEX ADL-S graphics policy']
+assert policy['IOProviderClass']==policy['IONameMatch']=='IntelFBClientControl'
+assert policy['IOClass']==policy['IOMatchCategory']=='AppleGraphicsDevicePolicy'
+assert policy['IOParentMatch']['IOProviderClass']=='AppleIntelFramebufferController'
+assert policy['IOParentMatch']['IOPropertyMatch']=={'WEXADLSGraphicsPolicyReady':True}
+assert policy['Default']=={'unload':False}
+assert policies['WEX Display13 graphics policy']['IOParentMatch']['IOPropertyMatch']=={'N97FramebufferBackendReady':True}
+# Evaluate the exact child/parent matching contract supplied to IOKit. A
+# similarly named root diagnostic or a Display13 parent cannot admit ADL-S.
+def matches(child_class, child_name, parent_class, parent_properties):
+ return (child_class==policy['IOProviderClass'] and child_name==policy['IONameMatch'] and
+         parent_class==policy['IOParentMatch']['IOProviderClass'] and
+         all(parent_properties.get(k)==v for k,v in policy['IOParentMatch']['IOPropertyMatch'].items()))
+assert matches('IntelFBClientControl','IntelFBClientControl','AppleIntelFramebufferController',{'WEXADLSGraphicsPolicyReady':True})
+for child_class,child_name,parent_class,properties in [
+ ('IOService','IntelFBClientControl','AppleIntelFramebufferController',{'WEXADLSGraphicsPolicyReady':True}),
+ ('IntelFBClientControl','Other','AppleIntelFramebufferController',{'WEXADLSGraphicsPolicyReady':True}),
+ ('IntelFBClientControl','IntelFBClientControl','IOPCIDevice',{'WEXADLSGraphicsPolicyReady':True}),
+ ('IntelFBClientControl','IntelFBClientControl','AppleIntelFramebufferController',{}),
+ ('IntelFBClientControl','IntelFBClientControl','AppleIntelFramebufferController',{'WEXADLSGraphicsPolicyReady':False}),
+ ('IntelFBClientControl','IntelFBClientControl','AppleIntelFramebufferController',{'N97FramebufferBackendReady':True})]:
+ assert not matches(child_class,child_name,parent_class,properties)
 # The ABI entries have one installer and one trampoline owner. This checks
 # architecture, separately from the CPU/runtime behavioral fixtures below.
 for symbol in ['__ZN21AppleIntelFramebuffer4initEP31AppleIntelFramebufferControllerj',
@@ -26,12 +49,16 @@ struct {void *lock=(void*)1;XELPComboClock::ClockAllocation allocation;} comboCl
 #include <cstring>
 #include <vector>
 #include <string>
+#include <map>
 #include <fstream>
 #include <iterator>
 #include <cstdio>
 using mach_vm_address_t=uintptr_t;
-void IORecursiveLockLock(void*){}void IORecursiveLockUnlock(void*){}
-struct IOService {void setProperty(const char*,bool) {}};
+unsigned lockDepth=0;
+void IORecursiveLockLock(void*){++lockDepth;}void IORecursiveLockUnlock(void*){assert(lockDepth);--lockDepth;}
+struct IOService;void(*policyClearObserver)(IOService*)=nullptr;
+struct IOService {std::map<std::string,bool> properties;void setProperty(const char *key,bool value) {assert(!lockDepth);properties[key]=value;if(!strcmp(key,"WEXADLSGraphicsPolicyReady") && !value && policyClearObserver)policyClearObserver(this);}};
+bool policyEligible(IOService *controller) {const auto i=controller->properties.find("WEXADLSGraphicsPolicyReady");return i!=controller->properties.end() && i->second;}
 struct IORegistryEntry {
  static IORegistryEntry *getRegistryRoot(){static IORegistryEntry r;return &r;}
  template<class...T>void setProperty(T...){}
@@ -63,7 +90,7 @@ bool xelpInstallNVRAMABI(KernelPatcher&,size_t,uintptr_t,size_t){return nvramOK;
 unsigned shutdownCalls=0;
 struct XE {
  bool framebufferDonorAttempted=false,framebufferDonorCommonReady=false,framebufferBackendInstalled=false;
- bool display13FramebufferRequested=false,tglPlatformNVRAMReady=false,tglProbeReady=false,tglFramebufferInitReady=false;
+ bool display13FramebufferRequested=false,adlsDisplaySelected=false,adlsDisplayHooksReady=true,tglPlatformNVRAMReady=false,tglProbeReady=false,tglFramebufferInitReady=false;
  void *tglPathPoolLock=(void*)1,*framebufferStartedController=nullptr;bool framebufferStartInProgress=false,tglLeasesStopping=false;
  bool runtimeOK=true,agdcOK=true,backendOK=true,trainingOK=true,framebufferTrainingHooksReady=false;
  uintptr_t orgFramebufferStart=0,orgFramebufferInit=0,orgFramebufferComputeLanes=0,framebufferLaneCaller=0;
@@ -86,8 +113,8 @@ struct XE {
  static void wrapDisplay13ProbeMode(){}static void wrapTGLProbePort(){}static void wrapFramebufferInit(){}static void wrapFramebufferComputeLanes(){}
 };
 XE *callbackXE;
-bool XE::wrapDisplay13FramebufferStart(IOService*,IOService*){assert(callbackXE->display13FramebufferRequested);assert(!callbackXE->framebufferStartedController);if(callbackXE->stopDuringStart)callbackXE->tglLeasesStopping=true;++callbackXE->startCalls;return callbackXE->nativeOK;}
-bool XE::wrapTGLFramebufferStart(IOService*,IOService*){assert(!callbackXE->display13FramebufferRequested);assert(!callbackXE->framebufferStartedController);if(callbackXE->stopDuringStart)callbackXE->tglLeasesStopping=true;++callbackXE->startCalls;return callbackXE->nativeOK;}
+bool XE::wrapDisplay13FramebufferStart(IOService *controller,IOService*){assert(callbackXE->display13FramebufferRequested);assert(!policyEligible(controller));assert(!callbackXE->framebufferStartedController);if(callbackXE->stopDuringStart)callbackXE->tglLeasesStopping=true;++callbackXE->startCalls;return callbackXE->nativeOK;}
+bool XE::wrapTGLFramebufferStart(IOService *controller,IOService*){assert(!lockDepth && !callbackXE->display13FramebufferRequested);assert(callbackXE->framebufferStartInProgress && !callbackXE->framebufferStartedController);assert(policyEligible(controller)==(callbackXE->adlsDisplaySelected && callbackXE->adlsDisplayHooksReady));if(callbackXE->stopDuringStart)callbackXE->tglLeasesStopping=true;++callbackXE->startCalls;return callbackXE->nativeOK && (!callbackXE->adlsDisplaySelected || callbackXE->adlsDisplayHooksReady);}
 FUNCTIONS
 int main(int argc,char **argv){
  std::vector<uint8_t> image(0x150000);
@@ -99,14 +126,15 @@ int main(int argc,char **argv){
   if(argc>1)assert(!memcmp(image.data()+span.first,span.second.data(),span.second.size()));
   else memcpy(image.data()+span.first,span.second.data(),span.second.size());
  }
- for(bool display13:{false,true})for(unsigned failure=0;failure<16;++failure){
+ for(bool display13:{false,true})for(bool adls:{false,true})for(unsigned failure=0;failure<16;++failure){
   shutdownCalls=0;
   auto b=image;uintptr_t pure=0x1234;memcpy(b.data()+0xccad0+0x188,&pure,sizeof(pure));
-  XE x;callbackXE=&x;x.display13FramebufferRequested=display13;KernelPatcher p;
+  XE x;callbackXE=&x;x.display13FramebufferRequested=display13;x.adlsDisplaySelected=adls;KernelPatcher p;
   // The provider must be resolved before this one-shot installation. These
   // are the real consumer guards behind the host notification-order fixture.
   if(failure==14)x.xelpProviderProbe=0;
   if(failure==15)x.xelpProviderConfigureProbe=0;
+  policyClearObserver=+[](IOService *c){assert(callbackXE->framebufferStartInProgress && !callbackXE->framebufferStartedController && !policyEligible(c));const auto calls=callbackXE->startCalls;assert(!XE::wrapFramebufferStart(c,c) && callbackXE->startCalls==calls);};
   surfaceOK=failure!=5;nvramOK=failure!=6;x.runtimeOK=failure!=7;x.agdcOK=failure!=8;x.backendOK=failure!=9;x.trainingOK=failure!=10;x.stopDuringStart=failure==11;x.nativeOK=failure!=12;
   if(failure>=1&&failure<=4)p.failAt=failure;
   bool handled=x.processFramebufferKext(p,1,(uintptr_t)b.data(),b.size());
@@ -119,7 +147,8 @@ int main(int argc,char **argv){
   assert(XE::wrapFramebufferStart(&c,&c)==(failure==0));
   assert(x.startCalls==((failure==0||failure==11||failure==12)?1U:0U));
   assert(x.framebufferStartedController==(failure==0?static_cast<void*>(&c):nullptr));
-  if(failure==0)assert(!XE::wrapFramebufferStart(&c,&c)&&x.startCalls==1);
+  assert(policyEligible(&c)==(failure==0 && adls && !display13));
+  if(failure==0){assert(!XE::wrapFramebufferStart(&c,&c)&&x.startCalls==1);assert(policyEligible(&c)==(adls && !display13));}
   if(failure==13){assert(!x.framebufferStartInProgress && comboClockTransaction.allocation.binding[0]==2);
    assert(comboClockTransaction.allocation.release(0,reinterpret_cast<uintptr_t>(&c)));
    assert(XE::wrapFramebufferStart(&c,&c) && x.startCalls==1);}
@@ -128,7 +157,12 @@ int main(int argc,char **argv){
   assert(shutdownCalls==(display13 && failure!=1?1U:0U));
   assert(p.attempts==calls&&x.backendCalls==backends); // no second trampoline
  }
- puts("PASS common-before-backend order, single ownership, partial failures and mandatory native-start gate");
+ // An installed ADL-S route set can still fail its operation contract.
+ // Such a backend must never become eligible, even transiently at start.
+ {XE x;callbackXE=&x;x.adlsDisplaySelected=true;x.adlsDisplayHooksReady=false;
+  x.framebufferDonorCommonReady=x.framebufferBackendInstalled=true;IOService c;
+  assert(!XE::wrapFramebufferStart(&c,&c) && !policyEligible(&c) && !x.framebufferStartedController);}
+ puts("PASS common-before-backend order, policy eligibility before native child publication, scoped matching, failed-start cleanup and mandatory native-start gate");
 }
 '''.replace('FUNCTIONS',f)
 for key,name in [('START','entry'),('INIT','initEntry'),('LANE','laneEntry'),('CALL','laneCall'),('HAL','halSize')]:
