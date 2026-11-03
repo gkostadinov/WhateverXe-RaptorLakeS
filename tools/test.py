@@ -23,6 +23,7 @@ python_tests += ['display13_cursor_resize','dsi_presentation','dsi_native_mode',
 python_tests += ['dsi_backlight_adapter','dsi_restart','dsi_panel','dsi_command_adapter','dsi_irq_live','dsi_surface_adapter','dsi_aperture_adapter']
 python_tests += ['display13_shutdown','display13_wake_notifications']
 python_tests += ['released_physical_admission','released_topology','accelerator_resources']
+python_tests += ['rpls_runtime_observer','rpls_runtime_fault']
 jobs += [(n,[sys.executable,str(R/'tests'/(n+'.py'))],None) for n in python_tests]
 for family,kernel in kernel_inputs.items():
  jobs += [(families[family]+'_pmap_native',[sys.executable,str(R/'tests'/(families[family]+'_pmap.py')),'--kernel',str(kernel),'--hde-source',str(a.hde_source.resolve())],None)]
