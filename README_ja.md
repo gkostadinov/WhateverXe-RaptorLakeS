@@ -84,7 +84,7 @@ BIOS/UEFIで設定できる場合は、**DVMT Pre-Allocatedを96MB**にします
 - GPUは自動選択するため、通常は`device-id`上書きは不要です。
 - Alder Lake-N / Twin LakeとAlder Lake-H/P/U / Raptor Lake-H/Pではタイル形式を自動選択します。`-yTileDisable`は使わないでください。`AAPL,GfxYTile`は不要です。
 - Tahoe上の物理Raptor Lake-S A780 revision 04では、システムメモリ用のnative GGTTエントリを補正します。診断用に`-wex-rpls-ggtt-compat-off`で元の処理へ戻せます。
-- Raptor Lake-SでIntel GOPがディスプレイを初期化していない場合(GPUパススルー等)、WEXはstolen memoryのGGTT範囲をマップし、VBTで配線された最小番号のHDMIポートに最初の外部ディスプレイ経路を用意します。固定HDMI combo経路はホットプラグ時もcomboモードを維持し、DisplayPort専用のnative HDCPを省略し、VBTで選択されたHDMIの電圧スイング設定を適用し、低速なnative GPUハングのレジスタダンプを省略します。HDMIの3840x2160@30と1920x1080@120で確認済みです。`-wex-boot-ddi3` または `-wex-boot-ddi4` で初期化するHDMIポートを選択します。`-wex-noboot-seed`、`-wex-nostolen-ggtt`、`-wex-hdmi-hdcp`、`-wex-native-hdmi-swing`、`-wex-rpls-hang-dump` は診断用にnativeの動作へ戻します。
+- Raptor Lake-SでIntel GOPがディスプレイを初期化していない場合(GPUパススルー等)、WEXはstolen memoryのGGTT範囲をマップし、VBTで配線された最小番号のHDMIポートに最初の外部ディスプレイ経路を用意します。固定HDMI combo経路はホットプラグ時もcomboモードを維持し、DisplayPort専用のnative HDCPを省略し、VBTで選択されたHDMIの電圧スイング設定を適用し、低速なnative GPUハングのレジスタダンプを省略します。HDMIの3840x2160@30と1920x1080@120で確認済みです。`-wex-boot-ddi3` または `-wex-boot-ddi4` で初期化するHDMIポートを選択します。`-wex-noboot-seed`、`-wex-nostolen-ggtt`、`-wex-hdmi-hdcp`、`-wex-native-hdmi-swing`、`-wex-rpls-hang-dump` は診断用にnativeの動作へ戻します。donorのYCbCr出力変換はこのディスプレイエンジンで正しくないため、HDMI出力はRGBに保ちます。`-wex-rpls-allow-ycbcr` でmacOSが要求するカラーモードを使用します。
 - Alder Lake-S / Raptor Lake-SのnativeなHDMI経路では、EDIDのHDMI Forum情報を読み取ります。SCDC対応のシンクではシンクの上限(最大600 MHz、例: 3840x2160@60)までのTMDSレートを許可し、340 MHzを超える場合はスクランブリングを有効にします。レートが許す場合は対応するTMDSクロックとGeneral Control Packetで10 bpcのディープカラーを使い、それ以外は8 bpcです。HDMIディープカラーを宣言するEDID 1.3のシンクは10ビットのEDID 1.4ディスプレイとして扱います。`-wex-hdmi-legacy-link`でnativeの300 MHz・8 bpcのリンクに戻します。
 
 ## 動作確認済みの機能と既知の問題

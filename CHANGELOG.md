@@ -22,6 +22,7 @@
 - Accept a Gen12 context-status element completion whose next ELSP element is the same context, instead of panicking under heavy render load.
 - Return a report string from the skipped GPU-hang dump so a GPU restart no longer page-faults in `IOAccelFIFOChannel2::restart`.
 - Recover the GPU after a hang on Raptor Lake-S: a host-scheduler engine reset clears each engine's status page, execlist mode and error mask, and the render-domain RCU mode and register whitelists, which the donor never restores, so the replayed work never ran and IOAccel restarted the channel forever. Render and compute share a reset domain, so every affected engine is now restored and replayed. Also retry the donor's soft reset steps until the full reset runs, and drop a stale context-status pending bit that could panic in `csbProcessIdleToActive` after a reset.
+- Keep Raptor Lake-S HDMI output in RGB. macOS asked for YCbCr once the 10-bit EDID rewrite turned the sink's EDID 1.3 "RGB colour display" type into the EDID 1.4 "RGB + YCbCr 4:4:4" encoding flags, and the donor's YCbCr output CSC is wrong on this display engine, so monitors showed solid green. The rewrite now advertises RGB 4:4:4 only, and the colour mode is forced to RGB; `-wex-rpls-allow-ycbcr` keeps the requested mode.
 - Make MPS and MPSGraph matrix multiplication work on Intel GPUs paired with CPUs without SGX (Alder Lake, Raptor Lake): MPSCore picked a device type for which `MPSNDArrayMatrixMultiplication` silently encoded nothing. Opt out with `-wex-mps-intel-off`.
 
 ## 0.7.0
