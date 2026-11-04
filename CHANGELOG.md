@@ -9,7 +9,6 @@
 - Add read-only GMBus/DDC request counters and live display register and scanout descriptions for display diagnostics.
 - Add read-only Raptor Lake-S render-engine runtime and outgoing-context lifetime observations for submission and completion diagnostics.
 - Add `tools/patch_xe_adapter.py`, which fixes two Xe compiler adapter defects on macOS 26: compute pipelines that set `maxTotalThreadsPerThreadgroup` were rejected, and one failed compile made every later compile in the same `MTLCompilerService` return the same error.
-- Add `tools/patch_tgl_mtl_driver.py`, which stops the TGL Metal driver from choosing SIMD8 kernel binaries. The driver picks SIMD8 for every dispatch of fewer than about 16 threadgroups of 128 threads, and the 2020 Tiger Lake compiler miscompiles some SIMD8 kernels: MPS small convolutions dropped every odd filter tap. SIMD16 and SIMD32 builds of the same kernels are correct.
 - Add opt-in `-wex-preempt-prio0`, which lets the host scheduler preempt default-priority Metal work so long dispatches no longer starve WindowServer.
 
 ### Fixed
