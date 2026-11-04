@@ -8,6 +8,7 @@
 - Drive native Raptor Lake-S HDMI up to 600 MHz TMDS with SCDC scrambling, enabling 3840x2160@60, and run 10 bpc deep colour with the matching TMDS clock and General Control Packet where the link allows it.
 - Add read-only GMBus/DDC request counters and live display register and scanout descriptions for display diagnostics.
 - Add read-only Raptor Lake-S render-engine runtime and outgoing-context lifetime observations for submission and completion diagnostics.
+- Add `tools/patch_xe_adapter.py`, which fixes two Xe compiler adapter defects on macOS 26: compute pipelines that set `maxTotalThreadsPerThreadgroup` were rejected, and one failed compile made every later compile in the same `MTLCompilerService` return the same error.
 - Add opt-in `-wex-preempt-prio0`, which lets the host scheduler preempt default-priority Metal work so long dispatches no longer starve WindowServer.
 
 ### Fixed
