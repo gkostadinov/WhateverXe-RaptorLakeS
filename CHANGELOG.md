@@ -5,6 +5,7 @@
 ### Added
 
 - Bring up external HDMI on Raptor Lake-S on macOS Tahoe without an Intel GOP: map the stolen-memory GGTT range, seed the first display path on the VBT-wired HDMI port, and add the `-wex-boot-ddi3` / `-wex-boot-ddi4` port selection.
+- Drive native Raptor Lake-S HDMI up to 600 MHz TMDS with SCDC scrambling, enabling 3840x2160@60, and run 10 bpc deep colour with the matching TMDS clock and General Control Packet where the link allows it.
 - Add read-only GMBus/DDC request counters and live display register and scanout descriptions for display diagnostics.
 - Add read-only Raptor Lake-S render-engine runtime and outgoing-context lifetime observations for submission and completion diagnostics.
 
