@@ -16,6 +16,7 @@
 - Skip the DisplayPort-only native HDCP on fixed HDMI routes, which dropped the link repeatedly.
 - Program the VBT-selected HDMI voltage-swing entry on Raptor Lake-S combo PHYs.
 - Skip the native GPU-hang register dump, which could hold WindowServer for minutes during resolution changes.
+- Accept a Gen12 context-status element completion whose next ELSP element is the same context, instead of panicking under heavy render load.
 
 ## 0.7.0
 
