@@ -10,6 +10,7 @@
 - Add read-only Raptor Lake-S render-engine runtime and outgoing-context lifetime observations for submission and completion diagnostics.
 - Add `tools/patch_xe_adapter.py`, which fixes two Xe compiler adapter defects on macOS 26: compute pipelines that set `maxTotalThreadsPerThreadgroup` were rejected, and one failed compile made every later compile in the same `MTLCompilerService` return the same error.
 - Add opt-in `-wex-preempt-prio0`, which lets the host scheduler preempt default-priority Metal work so long dispatches no longer starve WindowServer.
+- Publish a read-only `WEXSchedDump` snapshot of the Tiger Lake-class scheduler (execlist ports, semaphore wait queue, per-stamp queues) and the last context-status events for GPU hang diagnosis.
 
 ### Fixed
 
@@ -24,6 +25,9 @@
 - Recover the GPU after a hang on Raptor Lake-S: a host-scheduler engine reset clears each engine's status page, execlist mode and error mask, and the render-domain RCU mode and register whitelists, which the donor never restores, so the replayed work never ran and IOAccel restarted the channel forever. Render and compute share a reset domain, so every affected engine is now restored and replayed. Also retry the donor's soft reset steps until the full reset runs, and drop a stale context-status pending bit that could panic in `csbProcessIdleToActive` after a reset.
 - Keep Raptor Lake-S HDMI output in RGB. macOS asked for YCbCr once the 10-bit EDID rewrite turned the sink's EDID 1.3 "RGB colour display" type into the EDID 1.4 "RGB + YCbCr 4:4:4" encoding flags, and the donor's YCbCr output CSC is wrong on this display engine, so monitors showed solid green. The rewrite now advertises RGB 4:4:4 only, and the colour mode is forced to RGB; `-wex-rpls-allow-ycbcr` keeps the requested mode.
 - Make MPS and MPSGraph matrix multiplication work on Intel GPUs paired with CPUs without SGX (Alder Lake, Raptor Lake): MPSCore picked a device type for which `MPSNDArrayMatrixMultiplication` silently encoded nothing. Opt out with `-wex-mps-intel-off`.
+- Fix wrong Metal compute results from the Tiger Lake Metal driver: it chose its SIMD8 kernel binary for small dispatches, which the shader compiler miscompiles, and emitted the post-dispatch flush only for one packet type, so a dependent dispatch could read data the previous one had not written yet. The driver file cannot be changed (WindowServer only maps platform-signed libraries), so WEX patches its resident pages after checking every byte. Opt out with `-wex-mtl-driver-fix-off`.
+- Turn off MPSGraph kernel stitching on Tiger Lake-class GPUs: the shader compiler miscompiles a KxK convolution with a fused bias, batch norm or scale, which made Geekbench's Face Detection fail validation. Opt out with `-wex-mpsgraph-stitching-on`.
+- Stop endless GPU restarts after a hang: the reset drops the hung batch, so the stamp it would have written never completes, the engine is idle and IOAccel skipped the restart every few seconds until reboot. When no scheduler state still references that stamp, WEX now marks the stamp's submitted work complete. Opt out with `-wex-no-stamp-orphan`.
 
 ## 0.7.0
 
