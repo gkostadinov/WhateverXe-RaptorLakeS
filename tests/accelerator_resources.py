@@ -17,7 +17,7 @@ start=re.search(r'bool XE::wrapTGLAcceleratorStart\(.*?\n\}',source,re.S)[0]
 start_guard=start.split('{',1)[1].split(' if (callbackXE->adlnDetected')[0]
 aggregate=re.search(r'tglAcceleratorReady = ([^;]+);',source)[0]
 resources=re.search(r'const bool resourcesReady=.*?;',source,re.S)
-operands=set(re.findall(r'\b\w+\b',aggregate.split('=',1)[1]))-{'resourcesReady'}
+operands=set(re.findall(r'\b\w+\b',aggregate.split('=',1)[1]))-{'resourcesReady','RPLSMemory','ready','rplsMemoryReceipt'}
 code=r'''
 #include "kern_xelp_gt_resources.hpp"
 #include "kern_alderlake_n.hpp"
@@ -38,6 +38,9 @@ bool checkKernelArgument(const char*){return false;}
 template<class...T>void tglObserveAccelerator(T...){}
 unsigned nativeCalls=0;
 IOService *nativeProbe(IOService *that,IOService*,SInt32*){++nativeCalls;return that;}
+namespace RPLSMemory {struct Receipt {};inline bool ready(const Receipt &){return true;}}
+static RPLSMemory::Receipt rplsMemoryReceipt;
+static bool rplsPlainContextProfile=false,rplsPlainContextReady=false;
 struct XE {
  static XE *callbackXE;
  bool tglGT2Detected=false,tglGT2Ready=false,display12SmallGTDetected=false,display12SmallGTReady=false;
